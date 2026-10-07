@@ -53,12 +53,20 @@ Run `sudo tailscale serve --bg --https=6684 http://127.0.0.1:3210` on a machine 
 Inspect existing listeners before configuring Serve with `tailscale serve status --json`. Disable only this listener with `sudo tailscale serve --https=6684 off`; do not reset unrelated services.
 
 ### Notion Steps
-1. Create a new Notion integration by visiting https://www.notion.so/my-integrations. We only need the "Read content" and "No user information" capabilities. This should be an internal integration.
+1. Create a new Notion integration by visiting https://www.notion.so/my-integrations. The feed needs "Read content"; automatic cleanup also needs "Update content". "No user information" is sufficient. This should be an internal integration.
 2. Copy your internal integration token into `.env` as `NOTION_TOKEN`.
 3. Share the database(s) you want with the integration by opening your database as a page, going to "Share", and selecting your integration.
 4. Save your database's ID by copying the database URL and selecting the part between the slash and the question mark. The ID is 32 characters.
 
 Note: For more information on the Notion steps, see the [Notion docs](https://developers.notion.com/docs/getting-started).
+
+### Completed homework cleanup
+
+The separate `cleanup` Compose service moves pages with `Status = Done` to Notion Trash every 48 hours. Set `CLEANUP_DATA_SOURCE_ID` to the original Homework source ID (not a database or view ID). Override `CLEANUP_STATUS_PROPERTY` and `CLEANUP_DONE_STATUS` if your schema differs. The integration needs **Read content** and **Update content** capabilities. No items are permanently deleted.
+
+The first run is 48 hours after activation. The `cleanup-state` volume preserves the next run across restarts; an overdue run executes on startup. Failures retry after 15 minutes. Each candidate is checked again immediately before trashing, and page IDs are written to `/app/state/recovery.jsonl` for recovery. This is a periodic sweep of all currently Done items, not a two-day grace period for each item.
+
+Preview without writes: `sudo docker compose run --rm --no-deps cleanup node --experimental-strip-types scripts/cleanup.ts --dry-run`. View the schedule and results with `sudo docker compose logs --tail=100 cleanup`. Disable cleanup with `sudo docker compose stop cleanup`; to keep it disabled through future Compose updates, run only the `app` service. Do not remove the state volume unless you intend to reset the schedule. Restore removed pages from Notion Trash.
 
 ## ☕ Support ☕
 

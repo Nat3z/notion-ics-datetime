@@ -1,6 +1,7 @@
 name: notion-ics-datetime
 services:
   app:
+    image: notion-ics-datetime-app
     build: .
     restart: unless-stopped
     init: true
@@ -22,3 +23,20 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+  cleanup:
+    image: notion-ics-datetime-app
+    restart: unless-stopped
+    init: true
+    command: ["node", "--experimental-strip-types", "scripts/cleanup.ts"]
+    env_file: .env
+    volumes:
+      - cleanup-state:/app/state
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  cleanup-state:
