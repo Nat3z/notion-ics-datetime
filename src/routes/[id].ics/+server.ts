@@ -1,7 +1,5 @@
 import ical from 'ical-generator';
-// import { getVtimezoneComponent } from '@touch4it/ical-timezones';
-
-import { Client } from '@notionhq/client';
+import { Client, isFullPage } from '@notionhq/client';
 import type {
 	DatabaseObjectResponse,
 	QueryDataSourceResponse
@@ -12,19 +10,6 @@ import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
 export const trailingSlash = 'never';
-
-function forceUtcDateTimeLines(ics: string) {
-	return ics
-		.replace(/^DTSTART:(\d{8}T\d{6})(?!Z)$/gm, 'DTSTART:$1Z')
-		.replace(/^DTEND:(\d{8}T\d{6})(?!Z)$/gm, 'DTEND:$1Z');
-}
-
-// function toLocalDateParts(value: string) {
-// 	const [datePart, timePart] = value.split('T');
-// 	const [year, month, day] = datePart.split('-').map(Number);
-// 	const [hour, minute, second] = timePart.slice(0, 8).split(':').map(Number);
-// 	return new Date(year, month - 1, day, hour, minute, second || 0);
-// }
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	const secret = url.searchParams.get('secret');
@@ -42,8 +27,13 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		database_id: id
 	})) as DatabaseObjectResponse;
 	const dataSource = databaseMetadata.data_sources[0];
+	if (!dataSource) {
+		return new Response('Share the original source database with the Notion integration', {
+			status: 422
+		});
+	}
 
-	const databaseEntries = [];
+	const databaseEntries: QueryDataSourceResponse['results'] = [];
 	let query: QueryDataSourceResponse | { has_more: true; next_cursor: undefined } = {
 		has_more: true,
 		next_cursor: undefined
@@ -52,7 +42,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		query = await notion.dataSources.query({
 			data_source_id: dataSource.id,
 			page_size: 100,
-			start_cursor: query.next_cursor,
+			start_cursor: query.next_cursor ?? undefined,
 			filter: config.filter
 		});
 		databaseEntries.push(...query.results);
@@ -63,14 +53,19 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		title: string;
 		date: { start: string; end: string | null; time_zone: string | null };
 	}[] = databaseEntries.flatMap((object) => {
-		if (object.properties[config.dateProperty].date === null) {
+		if (!isFullPage(object)) {
+			return [];
+		}
+		const date = object.properties[env.DATE_PROPERTY || config.dateProperty];
+		const title = object.properties[env.TITLE_PROPERTY || config.titleProperty];
+		if (date?.type !== 'date' || !date.date || title?.type !== 'title') {
 			return [];
 		}
 		return [
 			{
 				id: object.id,
-				title: object.properties[config.titleProperty].title[0].text.content,
-				date: object.properties[config.dateProperty].date
+				title: title.title.map((part) => part.plain_text).join('') || 'Untitled',
+				date: date.date
 			}
 		];
 	});
@@ -79,24 +74,24 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		name: dataSource.name,
 		prodId: { company: 'Ming', language: 'EN', product: 'notion-ics' }
 	});
-	// calendar.timezone({
-	// 	name: 'Asia/Hong_Kong',
-	// 	generator: getVtimezoneComponent
-	// });
 	filtered.forEach((event) => {
+		const allDay: boolean = /^\d{4}-\d{2}-\d{2}$/.test(event.date.start);
+		const end: Date | undefined = allDay
+			? new Date(event.date.end ?? event.date.start)
+			: event.date.end ? new Date(event.date.end) : undefined;
+		if (allDay && end) {
+			// Notion date ranges are inclusive; ICS all-day end dates are exclusive.
+			end.setUTCDate(end.getUTCDate() + 1);
+		}
 		calendar.createEvent({
-			// start: toLocalDateParts(event.date.start),
-			// end: event.date.end ? toLocalDateParts(event.date.end) : undefined,
 			start: new Date(event.date.start),
-			end: event.date.end ? new Date(event.date.end) : undefined,
-			// timezone: 'Asia/Hong_Kong',
+			end,
+			allDay,
 			summary: event.title,
 			busystatus: config.busy,
 			id: event.id
 		});
 	});
-
-	const ics = forceUtcDateTimeLines(calendar.toString());
 
 	return new Response(calendar.toString(), {
 		status: 200,

@@ -38,7 +38,7 @@ Plan events in Notion, publish them as an ICS feed, and view them in your normal
 
 1. Copy `.env.example` to `.env`.
 2. Set `NOTION_TOKEN` to your integration token and `ACCESS_KEY` to a secret generated with `openssl rand -hex 48`. Do not commit `.env` or share your feed URL.
-3. Update `src/lib/config.ts` if needed. The defaults are `Date` and `Event name`.
+3. Set `DATE_PROPERTY` and `TITLE_PROPERTY` in `.env` if needed. The defaults are `Date` and `Event name`. For a task database, for example, use `DATE_PROPERTY=Due date` and `TITLE_PROPERTY=Task name`. Filters and busy status can be adjusted in `src/lib/config.ts`.
 4. Run `sudo docker compose up -d --build`.
 5. Open `http://localhost:3210`. Your feed is `http://localhost:3210/<database-id>.ics?secret=<ACCESS_KEY>`.
 
@@ -71,4 +71,3 @@ I like building small tools that make life a bit simpler. If this project helped
 This is an improved fork of [`tctree333/notion-ics`](https://github.com/tctree333/notion-ics), extended for real-world scheduling:
 - proper datetime support
 - Railway deployment
-
