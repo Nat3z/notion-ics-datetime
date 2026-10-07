@@ -48,9 +48,9 @@ Calendar clients must be able to reach this machine to subscribe. Cloud services
 
 ### Private Tailscale access
 
-Run `sudo tailscale serve --bg --https=443 http://127.0.0.1:3210` on a machine with port 443 available in its Serve configuration. Set `ORIGIN` in `.env` to the HTTPS URL printed by Tailscale, then run `sudo docker compose up -d --force-recreate`. Use that HTTPS URL instead of localhost for the calendar feed. This endpoint is tailnet-only, not public, so clients need Tailscale connectivity. Google Calendar's cloud servers cannot fetch it.
+Run `sudo tailscale serve --bg --https=6684 http://127.0.0.1:3210` on a machine with port 6684 available in its Serve configuration. Port 6684 spells NOTI on a phone keypad. Set `ORIGIN` in `.env` to the HTTPS URL printed by Tailscale, including `:6684`, then run `sudo docker compose up -d --force-recreate`. Use that HTTPS URL instead of localhost for the calendar feed. This endpoint is tailnet-only, not public, so clients need Tailscale connectivity. Google Calendar's cloud servers cannot fetch it.
 
-Inspect existing listeners before configuring Serve with `tailscale serve status --json`. Disable only this listener with `sudo tailscale serve --https=443 off`; do not reset unrelated services.
+Inspect existing listeners before configuring Serve with `tailscale serve status --json`. Disable only this listener with `sudo tailscale serve --https=6684 off`; do not reset unrelated services.
 
 ### Notion Steps
 1. Create a new Notion integration by visiting https://www.notion.so/my-integrations. We only need the "Read content" and "No user information" capabilities. This should be an internal integration.
@@ -71,5 +71,4 @@ I like building small tools that make life a bit simpler. If this project helped
 This is an improved fork of [`tctree333/notion-ics`](https://github.com/tctree333/notion-ics), extended for real-world scheduling:
 - proper datetime support
 - Railway deployment
-
 
