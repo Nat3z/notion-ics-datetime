@@ -6,7 +6,7 @@ services:
     init: true
     env_file: .env
     environment:
-      ORIGIN: http://localhost:3210
+      ORIGIN: ${ORIGIN:-http://localhost:3210}
     ports:
       - "127.0.0.1:3210:3000"
     read_only: true
