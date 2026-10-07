@@ -1,7 +1,7 @@
 # Notion to ICS with Datetime
 
 __Sync__ your __Notion database events__ (including date time) __to__ your own __Google, Apple, or Outlook calendar__ (via ICS feed). 
-*Note: you must deploy this on Railway.*
+This fork runs locally with Docker Compose; Railway is not required.
 
 __The pain point__: Notion database events can be shown in Notion Calendar, but, annoyingly, not in your personal Google/Apple/Outlook calendar. This repo completes the circle: it turns your Notion database into an ICS feed so your events sync to your own calendar apps.
 
@@ -11,7 +11,7 @@ __The pain point__: Notion database events can be shown in Notion Calendar, but,
 - Convert a Notion database into an `.ics` feed
 - Read and transfer Notion **datetime** values into calendar events
 - Subscribe to the feed from calendar apps
-- Deploy on Railway
+- Run locally with Docker Compose
 
 ## Good fit for
 
@@ -31,35 +31,24 @@ Plan events in Notion, publish them as an ICS feed, and view them in your normal
 - A Notion database ID
 - A Notion database with a title field
 - A Notion database with a date field
-- A Railway account
+- Docker with Docker Compose
 
 
 ## Configuring
 
-1. Create a new project on Railway
-2. Deploy this repo from GitHub
-3. Generate a secret key for `ACCESS_TOKEN` in your terminal:
-   ```bash
-   node -e "require('crypto').randomBytes(48, function(ex, buf) { console.log(buf.toString('base64')) });"
-   ```
-4. Add your private environment variables (Railway->Variables->):
-   - `ACCESS_TOKEN`
-   - `NOTION_TOKEN` (see Notion steps below)
-5. [Optional] Update `src/lib/config.ts` for your database's properties. See the Notion docs for the [filter schema](https://developers.notion.com/reference/post-database-query#post-database-query-filter).
-6. Build and deploy the site!
-7. Open your calendar ICS URL:
-   
-   (i) In Railway, go to **Settings → Networking → Public networking** and open your domain link.
-   
-   (ii) Add this to the end of the domain link:
-      `/<database-id>.ics?secret=<generated-secret>`
-      (see Notion steps below for how to get your database ID).
-   
-9. Subscribe to that ICS URL from your Google, Apple, or Outlook calendar app
+1. Copy `.env.example` to `.env`.
+2. Set `NOTION_TOKEN` to your integration token and `ACCESS_KEY` to a secret generated with `openssl rand -hex 48`. Do not commit `.env` or share your feed URL.
+3. Update `src/lib/config.ts` if needed. The defaults are `Date` and `Event name`.
+4. Run `sudo docker compose up -d --build`.
+5. Open `http://localhost:3210`. Your feed is `http://localhost:3210/<database-id>.ics?secret=<ACCESS_KEY>`.
+
+The service is bound only to this machine's loopback interface and restarts automatically with Docker. After changing `.env`, run `sudo docker compose up -d --force-recreate`; after changing code, add `--build`. View status with `sudo docker compose ps`, logs with `sudo docker compose logs --tail=100`, and stop with `sudo docker compose down`.
+
+Calendar clients must be able to reach this machine to subscribe. Cloud services such as Google Calendar cannot fetch a localhost-only feed. A remote client needs private networking or a separately configured HTTPS endpoint; this setup does not expose the service publicly.
 
 ### Notion Steps
 1. Create a new Notion integration by visiting https://www.notion.so/my-integrations. We only need the "Read content" and "No user information" capabilities. This should be an internal integration.
-2. Copy your internal integration token into Railway->Variables->`NOTION_TOKEN`.
+2. Copy your internal integration token into `.env` as `NOTION_TOKEN`.
 3. Share the database(s) you want with the integration by opening your database as a page, going to "Share", and selecting your integration.
 4. Save your database's ID by copying the database URL and selecting the part between the slash and the question mark. The ID is 32 characters.
 
@@ -76,7 +65,6 @@ I like building small tools that make life a bit simpler. If this project helped
 This is an improved fork of [`tctree333/notion-ics`](https://github.com/tctree333/notion-ics), extended for real-world scheduling:
 - proper datetime support
 - Railway deployment
-
 
 
 

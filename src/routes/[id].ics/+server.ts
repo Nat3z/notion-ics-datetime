@@ -8,12 +8,10 @@ import type {
 } from '@notionhq/client/build/src/api-endpoints';
 
 import config from '$lib/config';
-import { ACCESS_KEY, NOTION_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
 export const trailingSlash = 'never';
-
-const notion = new Client({ auth: NOTION_TOKEN, notionVersion: '2025-09-03' });
 
 function forceUtcDateTimeLines(ics: string) {
 	return ics
@@ -30,9 +28,13 @@ function forceUtcDateTimeLines(ics: string) {
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	const secret = url.searchParams.get('secret');
-	if (secret !== ACCESS_KEY) {
+	if (!env.ACCESS_KEY || secret !== env.ACCESS_KEY) {
 		return new Response('Forbidden', { status: 403 });
 	}
+	if (!env.NOTION_TOKEN) {
+		return new Response('Notion integration is not configured', { status: 503 });
+	}
+	const notion = new Client({ auth: env.NOTION_TOKEN, notionVersion: '2025-09-03' });
 
 	const { id } = params;
 
